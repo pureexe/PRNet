@@ -75,7 +75,7 @@ def main(args):
                 save_vertices = frontalize(vertices)
             else:
                 save_vertices = vertices.copy()
-            save_vertices[:,1] = h - 1 - save_vertices[:,1]
+            save_vertices[:,1] = - save_vertices[:,1]
 
         if args.isImage:
             imsave(os.path.join(save_folder, name + '.jpg'), image)
