@@ -116,10 +116,18 @@ def main(args):
 
         if args.isPose or args.isShow:
             # estimate pose
-            camera_matrix, pose = estimate_pose(vertices)
-            np.savetxt(os.path.join(save_folder, name + '_pose.txt'), pose) 
-            np.savetxt(os.path.join(save_folder, name + '_camera_matrix.txt'), camera_matrix) 
+            focal = args.focalLength
+            height = image.shape[0]
+            predict_vertices = vertices.copy()
+            if focal != 0:
+                predict_vertices = (predict_vertices - height*0.5) / (height *0.5)
+                predict_vertices[:,2] *= -1
+                predict_vertices[:,2] += focal
 
+            camera_matrix, pose  = estimate_pose(predict_vertices)
+            np.savetxt(os.path.join(save_folder, name + '_pose.txt'), pose) 
+            np.savetxt(os.path.join(save_folder, name + '_camera_matrix.txt'), camera_matrix)
+            np.save(os.path.join(save_folder, name + '_camera_matrix.npy'), camera_matrix) 
             np.savetxt(os.path.join(save_folder, name + '_pose.txt'), pose)
 
         if args.isShow:
@@ -144,11 +152,11 @@ if __name__ == '__main__':
                         help='whether to use dlib for detecting face, default is True, if False, the input image should be cropped in advance')
     parser.add_argument('--is3d', default=True, type=ast.literal_eval,
                         help='whether to output 3D face(.obj). default save colors.')
-    parser.add_argument('--isMat', default=False, type=ast.literal_eval,
+    parser.add_argument('--isMat', default=True, type=ast.literal_eval,
                         help='whether to save vertices,color,triangles as mat for matlab showing')
     parser.add_argument('--isKpt', default=False, type=ast.literal_eval,
                         help='whether to output key points(.txt)')
-    parser.add_argument('--isPose', default=False, type=ast.literal_eval,
+    parser.add_argument('--isPose', default=True, type=ast.literal_eval,
                         help='whether to output estimated pose(.txt)')
     parser.add_argument('--isShow', default=False, type=ast.literal_eval,
                         help='whether to show the results with opencv(need opencv)')
@@ -168,4 +176,7 @@ if __name__ == '__main__':
     # update in 2017/7/19
     parser.add_argument('--texture_size', default=256, type=int,
                         help='size of texture map, default is 256. need isTexture is True')
+    # update right hand 
+    parser.add_argument('--focalLength', default=2000, type=ast.literal_eval,
+                        help='set focal length to apply the pose, 0 to disable')
     main(parser.parse_args())
