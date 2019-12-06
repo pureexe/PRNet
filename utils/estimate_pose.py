@@ -85,11 +85,39 @@ def compute_similarity_transform(points_static, points_to_transform):
     s = (rms_d0/rms_d1)
     P = np.c_[s*np.eye(3).dot(R), t_final]
     return P
+    
+def rigid_transform_3D(cano, pred):
+    cano_mean = np.mean(cano, axis=0)
+    pred_mean = np.mean(pred, axis=0)
+
+    # suffix "_ms" is mean-subtracted
+    cano_ms = cano - cano_mean
+    pred_ms = pred - pred_mean
+
+    scale_cano = np.mean(np.linalg.norm(cano_ms, axis=1))
+    scale_pred = np.mean(np.linalg.norm(pred_ms, axis=1))
+    scale = scale_pred / scale_cano
+
+    cano_ms *= scale
+
+    H = np.matmul(cano_ms.T, pred_ms)
+
+    U, S, VT = np.linalg.svd(H)
+    R = np.matmul(VT.T, U.T)
+
+    # special reflection case
+    if np.linalg.det(R) < 0:
+      VT[2,:] *= -1
+      R = np.matmul(VT.T, U.T)
+
+    t = pred_mean.T - np.matmul(R * scale, cano_mean.T)
+    return R, scale, t
 
 def estimate_pose(vertices):
-    canonical_vertices = np.load('Data/uv-data/canonical_vertices.npy')
+    canonical_vertices = np.load('Data/uv-data/canonical_righthand_at_2000.npy') 
+    canonical_vertices[:,2] = canonical_vertices[:,2] # (0,0,2000)
     P = compute_similarity_transform(vertices, canonical_vertices)
-    _,R,_ = P2sRt(P) # decompose affine matrix to s, R, t
+    R, scale ,t = rigid_transform_3D(canonical_vertices,vertices)
     pose = matrix2angle(R) 
-
-    return P, pose
+    P = np.c_[R,t]
+    return P, scale, pose
